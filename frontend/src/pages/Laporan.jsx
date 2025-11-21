@@ -1,33 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaFileExcel, FaFilePdf, FaCalendarAlt } from 'react-icons/fa';
-import { exportToExcel } from '../utils/exportToExcel'; // Import fungsi Excel kita
+import { exportToExcel } from '../utils/exportToExcel';
+import { exportToPDF } from '../utils/exportToPDF';
 
 const Laporan = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Data Dummy untuk simulasi download laporan
-  // (Nanti data ini akan diambil dari database berdasarkan tanggal yang dipilih)
-  const dummyReportData = [
-    { Tanggal: '01-05-2024', Keterangan: 'Setoran Awal', Masuk: 500000, Keluar: 0, Saldo: 500000 },
-    { Tanggal: '05-05-2024', Keterangan: 'Beli Buku', Masuk: 0, Keluar: 50000, Saldo: 450000 },
-    { Tanggal: '10-05-2024', Keterangan: 'Setoran Mingguan', Masuk: 20000, Keluar: 0, Saldo: 470000 },
-    { Tanggal: '12-05-2024', Keterangan: 'Uang Gedung', Masuk: 0, Keluar: 150000, Saldo: 320000 },
-    { Tanggal: '20-05-2024', Keterangan: 'Tabungan Wajib', Masuk: 50000, Keluar: 0, Saldo: 370000 },
-  ];
+  // Ambil data transaksi dari backend saat komponen dimuat
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      const token = localStorage.getItem('token');
+      const userString = localStorage.getItem('user');
+
+      if (!token || !userString) return;
+
+      const user = JSON.parse(userString);
+      const userId = user.id;
+
+      setLoading(true);
+      try {
+        const response = await fetch(`http://localhost:5000/api/transaksi/${userId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setTransactions(data);
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data transaksi:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  // Fungsi untuk memfilter data berdasarkan rentang tanggal
+  const getFilteredData = () => {
+    if (!startDate || !endDate) {
+      alert("Silakan pilih rentang tanggal terlebih dahulu!");
+      return [];
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    // Set waktu end ke akhir hari agar transaksi di tanggal tersebut tetap masuk
+    end.setHours(23, 59, 59, 999);
+
+    return transactions.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      return itemDate >= start && itemDate <= end;
+    });
+  };
+
+  // Format Rupiah
+  const formatRupiah = (angka) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+  };
+
+  // Format Tanggal
+  const formatDate = (dateString) => {
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('id-ID', options);
+  };
 
   const handleDownloadExcel = () => {
-    if (!startDate || !endDate) {
-      alert("Silakan pilih rentang tanggal (Dari & Sampai) terlebih dahulu!");
-      return;
+    const filteredData = getFilteredData();
+    if (filteredData.length === 0) {
+        if(startDate && endDate) alert("Tidak ada data transaksi pada rentang tanggal tersebut.");
+        return;
     }
-    
-    // Panggil fungsi download
-    exportToExcel(dummyReportData, `Laporan_Tabungan_${startDate}_sd_${endDate}`);
+
+    // Format data untuk Excel
+    const dataToExport = filteredData.map(item => ({
+      Tanggal: formatDate(item.tanggal),
+      Keterangan: item.keterangan,
+      Tipe: item.tipe === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+      Jumlah: parseInt(item.jumlah), // Pastikan angka
+      ID_Transaksi: item.id
+    }));
+
+    exportToExcel(dataToExport, `Laporan_Tabungan_${startDate}_sd_${endDate}`);
   };
 
   const handleDownloadPDF = () => {
-    alert("Fitur PDF akan tersedia setelah Backend terhubung nanti.");
+    const filteredData = getFilteredData();
+    if (filteredData.length === 0) {
+        if(startDate && endDate) alert("Tidak ada data transaksi pada rentang tanggal tersebut.");
+        return;
+    }
+
+    const title = `Laporan Tabungan Siswa (${formatDate(startDate)} s/d ${formatDate(endDate)})`;
+    const headers = ['Tanggal', 'Keterangan', 'Tipe', 'Jumlah'];
+    
+    // Format data untuk PDF (Array of Arrays)
+    const data = filteredData.map(item => [
+        formatDate(item.tanggal),
+        item.keterangan,
+        item.tipe === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+        formatRupiah(item.jumlah)
+    ]);
+
+    exportToPDF(title, headers, data, `Laporan_PDF_${startDate}_${endDate}`);
   };
 
   return (
@@ -39,8 +117,9 @@ const Laporan = () => {
           Unduh laporan transaksi tabungan Anda secara lengkap dalam format Excel atau PDF.
         </p>
         
+        {loading && <p style={{fontStyle: 'italic', color: '#888'}}>Sedang memuat data...</p>}
+
         <div className="date-range-picker">
-          {/* Input Tanggal Mulai */}
           <div className="date-input-group">
             <label>Dari Tanggal</label>
             <div className="input-with-icon">
@@ -53,7 +132,6 @@ const Laporan = () => {
             </div>
           </div>
           
-          {/* Input Tanggal Selesai */}
           <div className="date-input-group">
             <label>Sampai Tanggal</label>
             <div className="input-with-icon">
@@ -67,12 +145,12 @@ const Laporan = () => {
           </div>
         </div>
 
-        {/* Tombol Download */}
         <div className="download-actions">
-          <button className="btn-report excel" onClick={handleDownloadExcel}>
+          <button className="btn-report excel" onClick={handleDownloadExcel} disabled={loading}>
             <FaFileExcel /> Download Excel
           </button>
-          <button className="btn-report pdf" onClick={handleDownloadPDF}>
+          
+          <button className="btn-report pdf" onClick={handleDownloadPDF} disabled={loading}>
             <FaFilePdf /> Download PDF
           </button>
         </div>

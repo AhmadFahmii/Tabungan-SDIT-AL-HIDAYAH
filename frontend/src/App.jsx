@@ -19,6 +19,7 @@ import InputTransaksi from './admin/pages/InputTransaksi.jsx';
 import Penarikan from './admin/pages/Penarikan.jsx';
 import DataSiswa from './admin/pages/DataSiswa.jsx';
 import LaporanAdmin from './admin/pages/LaporanAdmin.jsx';
+import ManageAdmin from './admin/pages/ManageAdmin.jsx';
 
 // Komponen Pembungkus yang Terproteksi
 const ProtectedLayout = () => {
@@ -83,6 +84,7 @@ const ProtectedLayout = () => {
               <Route path="/admin/penarikan" element={<Penarikan />} />
               <Route path="/admin/data-siswa" element={<DataSiswa />} />
               <Route path="/admin/laporan" element={<LaporanAdmin />} />
+              <Route path="/admin/manage-admin" element={<ManageAdmin />} />
             </>
           )}
         </Routes>

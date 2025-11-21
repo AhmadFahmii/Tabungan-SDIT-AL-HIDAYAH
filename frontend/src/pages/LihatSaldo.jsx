@@ -82,8 +82,6 @@ const LihatSaldo = () => {
     });
   };
 
-  // Transaksi Terakhir (Sementara kosongkan atau buat logika ambil 3 teratas dari state)
-  // Agar bersih, kita kosongkan dulu list manualnya
   const recentTx = []; 
 
   return (

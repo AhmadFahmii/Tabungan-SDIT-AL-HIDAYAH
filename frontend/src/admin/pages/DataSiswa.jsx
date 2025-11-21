@@ -14,19 +14,19 @@ const DataSiswa = () => {
     jenis_kelamin: 'L',
     kelas: '',
     no_hp: '',
-    alamat: ''
+    alamat: '',
+    password: '' // Field baru untuk password
   });
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Ambil Token
   const token = localStorage.getItem('token');
 
   // 1. Fetch Data
   const fetchStudents = () => {
     fetch('http://localhost:5000/api/admin/students', {
-      headers: { 'Authorization': `Bearer ${token}` } // +HEADER
+      headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => {
@@ -37,7 +37,7 @@ const DataSiswa = () => {
 
   const fetchClasses = () => {
     fetch('http://localhost:5000/api/admin/kelas', {
-      headers: { 'Authorization': `Bearer ${token}` } // +HEADER
+      headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => { if(Array.isArray(data)) setClassList(data); })
@@ -45,7 +45,7 @@ const DataSiswa = () => {
   };
 
   useEffect(() => {
-    if(token) {
+    if (token) {
       fetchStudents();
       fetchClasses(); 
     }
@@ -64,7 +64,8 @@ const DataSiswa = () => {
         jenis_kelamin: student.jenis_kelamin || 'L',
         kelas: student.kelas,
         no_hp: student.no_hp || '', 
-        alamat: student.alamat || ''
+        alamat: student.alamat || '',
+        password: '' // Kosongkan password saat edit (hanya diisi jika mau ubah)
     });
     setIsModalOpen(true);
   };
@@ -72,7 +73,7 @@ const DataSiswa = () => {
   const handleAddClick = () => {
     setIsEditing(false);
     setEditingId(null);
-    setFormData({ nis: '', nama: '', jenis_kelamin: 'L', kelas: '', no_hp: '', alamat: '' });
+    setFormData({ nis: '', nama: '', jenis_kelamin: 'L', kelas: '', no_hp: '', alamat: '', password: '' });
     setIsModalOpen(true);
   };
 
@@ -90,7 +91,7 @@ const DataSiswa = () => {
         method: method,
         headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` // +HEADER
+            'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify(formData),
       });
@@ -123,6 +124,7 @@ const DataSiswa = () => {
     <div>
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h2 style={{color: '#333', margin: 0}}>Kelola Data Siswa</h2>
+        
         <button className="btn-submit" onClick={handleAddClick} style={{width: 'auto', display: 'flex', alignItems: 'center', gap: '8px'}}>
           <FaPlus /> Tambah Siswa
         </button>
@@ -225,9 +227,10 @@ const DataSiswa = () => {
             </h3>
             
             <form className="profile-form" onSubmit={handleSubmit}>
+              
               <div style={{display: 'flex', gap: '20px', marginBottom: '15px'}}>
                 <div className="form-group" style={{flex: 1}}>
-                  <label>NIS (Nomor Induk Siswa)</label>
+                  <label>NIS (Akan jadi Username Login)</label>
                   <input 
                     type="text" name="nis" value={formData.nis} onChange={handleInputChange} required placeholder="Contoh: 2024001" 
                     style={{width: '100%', boxSizing: 'border-box'}} 
@@ -265,6 +268,19 @@ const DataSiswa = () => {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* PASSWORD FIELD BARU */}
+              <div className="form-group" style={{marginBottom: '15px'}}>
+                  <label>Password Akun {isEditing ? '(Isi jika ingin diganti)' : '(Default: 123456)'}</label>
+                  <input 
+                    type="password" 
+                    name="password" 
+                    value={formData.password || ''} 
+                    onChange={handleInputChange} 
+                    placeholder={isEditing ? "Biarkan kosong jika tidak diubah" : "Masukkan password"} 
+                    style={{width: '100%', boxSizing: 'border-box'}} 
+                  />
               </div>
 
               <div className="form-group" style={{marginBottom: '15px'}}>

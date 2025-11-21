@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaDownload, FaFilter } from 'react-icons/fa';
+import { FaCalendarAlt, FaDownload, FaFilePdf, FaFilter } from 'react-icons/fa'; // Tambah FaFilePdf
 import { exportToExcel } from '../../utils/exportToExcel'; 
+import { exportToPDF } from '../../utils/exportToPDF'; // <-- IMPORT FUNGSI PDF
 
 const LaporanAdmin = () => {
   const [transactions, setTransactions] = useState([]);
@@ -8,7 +9,6 @@ const LaporanAdmin = () => {
   const [period, setPeriod] = useState('month'); 
   const [loading, setLoading] = useState(false);
 
-  // Ambil Token
   const token = localStorage.getItem('token');
 
   const getDateRange = (type) => {
@@ -39,7 +39,7 @@ const LaporanAdmin = () => {
     const { start, end } = getDateRange(period);
 
     fetch(`http://localhost:5000/api/admin/laporan?startDate=${start}&endDate=${end}`, {
-        headers: { 'Authorization': `Bearer ${token}` } // +HEADER
+        headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => {
@@ -80,27 +80,64 @@ const LaporanAdmin = () => {
 
   const reportData = processData();
 
-  const handleDownload = () => {
+  // Handler Excel
+  const handleDownloadExcel = () => {
     const dataToExport = reportData.map(item => ({
       [reportType === 'kelas' ? 'Nama Kelas' : 'Nama Siswa']: item.label,
       'Total Pemasukan': item.masuk,
       'Total Pengeluaran': item.keluar,
-      'Saldo Bersih (Periode Ini)': item.masuk - item.keluar,
+      'Saldo Bersih': item.masuk - item.keluar,
       'Jumlah Transaksi': item.count
     }));
     
     exportToExcel(dataToExport, `Laporan_${reportType}_${period}`);
   };
 
+  // Handler PDF (BARU)
+  const handleDownloadPDF = () => {
+    // Siapkan Judul
+    const title = `Laporan Keuangan - ${reportType === 'kelas' ? 'Per Kelas' : 'Per Siswa'} (${period.toUpperCase()})`;
+    
+    // Siapkan Header Kolom
+    const headers = [
+      reportType === 'kelas' ? 'Nama Kelas' : 'Nama Siswa', 
+      'Pemasukan', 
+      'Pengeluaran', 
+      'Saldo Bersih', 
+      'Jml Trx'
+    ];
+
+    // Siapkan Data Baris (Format Array of Arrays)
+    const data = reportData.map(item => [
+      item.label,
+      `Rp ${item.masuk.toLocaleString('id-ID')}`,
+      `Rp ${item.keluar.toLocaleString('id-ID')}`,
+      `Rp ${(item.masuk - item.keluar).toLocaleString('id-ID')}`,
+      item.count
+    ]);
+
+    exportToPDF(title, headers, data, `Laporan_PDF_${reportType}_${period}`);
+  };
+
   return (
     <div>
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h2 style={{color: '#333', margin: 0}}>Laporan Keuangan</h2>
-        <button className="btn-download" onClick={handleDownload}>
-            <FaDownload /> Download Excel
-        </button>
+        
+        <div style={{display: 'flex', gap: '10px'}}>
+            {/* Tombol Excel */}
+            <button className="btn-download" onClick={handleDownloadExcel}>
+                <FaDownload /> Excel
+            </button>
+            
+            {/* Tombol PDF (Merah) */}
+            <button className="btn-report pdf" style={{padding: '12px 20px', borderRadius: '8px'}} onClick={handleDownloadPDF}>
+                <FaFilePdf /> PDF
+            </button>
+        </div>
       </div>
 
+      {/* Filter Controls */}
       <div className="dashboard-card" style={{marginBottom: '20px', padding: '15px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap'}}>
         
         <div style={{display: 'flex', gap: '10px'}}>
@@ -133,6 +170,7 @@ const LaporanAdmin = () => {
         </div>
       </div>
 
+      {/* Tabel Laporan */}
       <div className="dashboard-card table-card">
         <div className="table-responsive">
           <table className="transaction-table">

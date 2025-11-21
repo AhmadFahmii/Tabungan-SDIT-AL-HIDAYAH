@@ -7,7 +7,8 @@ import {
   FaSignOutAlt, 
   FaChevronLeft,
   FaHandHoldingUsd,
-  FaFileAlt
+  FaFileAlt,
+  FaUserCog
 } from 'react-icons/fa';
 import LogoSekolah from '../../assets/logo-sdit-alhidayah.png';
 
@@ -60,7 +61,12 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar }) => {
               <span className="menu-text">Kelola Siswa</span> 
             </NavLink>
           </li>
-          
+          <li>
+            <NavLink to="/admin/manage-admin" className={({ isActive }) => isActive ? 'active' : ''}>
+              <FaUserCog className="sidebar-menu-icon" />
+              <span className="menu-text">Manajemen Admin</span>
+            </NavLink>
+          </li>
           <li style={{marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px'}}>
             <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''}>
               <FaSignOutAlt className="sidebar-menu-icon" />

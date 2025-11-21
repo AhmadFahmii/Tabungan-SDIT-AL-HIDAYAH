@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaLock, FaUser } from 'react-icons/fa'; 
 import LogoSekolah from '../assets/logo-sdit-alhidayah.png';
+import BoyProfile from '../assets/boy.png'; 
+import GirlProfile from '../assets/girl.png';
 
 const Login = () => {
   const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // State untuk menampilkan foto profil dinamis (Default logo sekolah)
+  const [profileImage, setProfileImage] = useState(LogoSekolah);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -28,10 +34,26 @@ const Login = () => {
       const result = await response.json();
 
       if (result.success) {
-        localStorage.setItem('token', result.token); // Simpan Token
+        // Simpan data sesi
+        localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
         localStorage.setItem('role', result.role);
         localStorage.setItem('isLoggedIn', 'true');
+
+        // Logika Pemilihan Foto Profil berdasarkan Jenis Kelamin
+        let userPhoto = LogoSekolah; // Default
+        if (result.role === 'siswa') {
+            if (result.user.jenis_kelamin === 'L') {
+                userPhoto = BoyProfile;
+            } else if (result.user.jenis_kelamin === 'P') {
+                userPhoto = GirlProfile;
+            }
+            // Simpan URL foto ke localStorage agar bisa dipakai di Header
+            localStorage.setItem('userPhoto', userPhoto);
+            setProfileImage(userPhoto); // Update state untuk efek visual sesaat
+        } else {
+             localStorage.setItem('userPhoto', LogoSekolah); // Admin pakai logo sekolah
+        }
 
         alert(`Login Berhasil! Selamat Datang, ${result.user.nama}`);
         
@@ -45,6 +67,7 @@ const Login = () => {
         setError(result.message);
       }
     } catch (err) {
+      console.error(err);
       setError("Gagal terhubung ke server.");
     } finally {
       setLoading(false);
@@ -57,7 +80,8 @@ const Login = () => {
         
         <div className="login-header">
           <div className="logo-circle">
-             <img src={LogoSekolah} alt="Logo SDIT" className="login-logo" />
+             {/* Tampilkan gambar profil dinamis */}
+             <img src={profileImage} alt="Logo/Profil" className="login-logo" />
           </div>
           <h2>SDIT AL-HIDAYAH</h2>
           <p>Sistem Informasi Tabungan Siswa</p>
