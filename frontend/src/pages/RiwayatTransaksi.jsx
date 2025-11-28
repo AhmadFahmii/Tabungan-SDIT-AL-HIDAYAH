@@ -15,9 +15,8 @@ const RiwayatTransaksi = () => {
     const user = JSON.parse(userString);
     const userId = user.id; 
 
-    // Ganti fetch dengan fetchWithAuth
-    fetchWithAuth(`http://localhost:5000/api/transaksi/${userId}`)
-      .then(response => response.json())
+    fetchWithAuth(`/api/transaksi/${userId}`)
+      .then(res => res.json())
       .then(data => {
         setTransactions(Array.isArray(data) ? data : []);
         setLoading(false);

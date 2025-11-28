@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaPlus, FaUserGraduate, FaFilter, FaEdit } from 'react-icons/fa';
-import { fetchWithAuth } from '../../utils/api'; 
+import { FaSearch, FaPlus, FaUserGraduate, FaFilter, FaEdit, FaTrash } from 'react-icons/fa'; 
+import { fetchWithAuth } from '../../utils/api';
 
 const DataSiswa = () => {
   const [students, setStudents] = useState([]);
@@ -9,21 +9,20 @@ const DataSiswa = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterGrade, setFilterGrade] = useState('all'); 
   const [formData, setFormData] = useState({
-    nis: '', nama: '', jenis_kelamin: 'L', kelas: '', no_hp: '', alamat: ''
+    nis: '', nama: '', jenis_kelamin: 'L', kelas: '', no_hp: '', alamat: '', password: ''
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // 1. Fetch Data dengan Wrapper Auth
   const fetchStudents = () => {
-    fetchWithAuth('http://localhost:5000/api/admin/students')
+    fetchWithAuth('/api/admin/students')
       .then(res => res.json())
       .then(data => { if(Array.isArray(data)) setStudents(data); })
       .catch(err => console.error(err));
   };
 
   const fetchClasses = () => {
-    fetchWithAuth('http://localhost:5000/api/admin/kelas')
+    fetchWithAuth('/api/admin/kelas')
       .then(res => res.json())
       .then(data => { if(Array.isArray(data)) setClassList(data); })
       .catch(err => console.error(err));
@@ -47,7 +46,8 @@ const DataSiswa = () => {
         jenis_kelamin: student.jenis_kelamin || 'L',
         kelas: student.kelas,
         no_hp: student.no_hp || '', 
-        alamat: student.alamat || ''
+        alamat: student.alamat || '',
+        password: ''
     });
     setIsModalOpen(true);
   };
@@ -55,27 +55,42 @@ const DataSiswa = () => {
   const handleAddClick = () => {
     setIsEditing(false);
     setEditingId(null);
-    setFormData({ nis: '', nama: '', jenis_kelamin: 'L', kelas: '', no_hp: '', alamat: '' });
+    setFormData({ nis: '', nama: '', jenis_kelamin: 'L', kelas: '', no_hp: '', alamat: '', password: '' });
     setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = async (id, nama) => {
+    if (window.confirm(`Yakin ingin menghapus siswa "${nama}"? \nSemua data transaksi siswa ini juga akan terhapus permanen!`)) {
+      try {
+        const response = await fetchWithAuth(`/api/admin/students/${id}`, {
+          method: 'DELETE'
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert("✅ Siswa berhasil dihapus!");
+          fetchStudents(); 
+        } else {
+          alert("❌ Gagal menghapus: " + result.message);
+        }
+      } catch (error) {
+        console.error("Error delete:", error);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     const url = isEditing 
-        ? `http://localhost:5000/api/admin/students/${editingId}`
-        : 'http://localhost:5000/api/admin/students';
-    
+        ? `/api/admin/students/${editingId}`
+        : '/api/admin/students';
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
-      // Gunakan fetchWithAuth untuk request update/add
       const response = await fetchWithAuth(url, {
         method: method,
-        body: JSON.stringify(formData), // Content-Type sudah di-handle oleh helper
+        body: JSON.stringify(formData),
       });
       const result = await response.json();
-
       if (response.ok) {
         alert(isEditing ? "✅ Data Siswa Diupdate!" : "✅ Siswa Baru Ditambahkan!");
         setIsModalOpen(false);
@@ -97,7 +112,6 @@ const DataSiswa = () => {
     return matchesSearch && matchesGrade;
   });
 
-  // ... (return JSX sama persis seperti sebelumnya) ...
   return (
     <div>
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
@@ -106,6 +120,7 @@ const DataSiswa = () => {
       </div>
 
       <div className="dashboard-card table-card">
+        {/* Search & Filter */}
         <div style={{padding: '20px', borderBottom: '1px solid #eee', display: 'flex', gap: '15px', flexWrap: 'wrap'}}>
           <div className="search-box" style={{flex: 2, minWidth: '200px'}}>
             <FaSearch className="search-icon" />
@@ -134,7 +149,7 @@ const DataSiswa = () => {
                 <th style={{textAlign: 'center'}}>L/P</th>
                 <th style={{textAlign: 'center'}}>Kelas</th>
                 <th style={{textAlign: 'right', paddingRight: '30px'}}>Saldo</th>
-                <th style={{textAlign: 'center', width: '80px', paddingRight: '24px'}}>Aksi</th>
+                <th style={{textAlign: 'center', width: '120px', paddingRight: '24px'}}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +169,10 @@ const DataSiswa = () => {
                     <td style={{textAlign: 'center'}}><span className="badge-status pending" style={{color: '#333', backgroundColor: '#f5f5f5', border: '1px solid #ddd'}}>{s.kelas}</span></td>
                     <td style={{textAlign: 'right', paddingRight: '30px', fontWeight: 'bold', color: '#2E7D32', fontSize: '15px'}}>Rp {s.saldo ? s.saldo.toLocaleString('id-ID') : 0}</td>
                     <td style={{textAlign: 'center', paddingRight: '24px'}}>
-                        <button onClick={() => handleEditClick(s)} style={{border: 'none', background: '#ffb300', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'}} title="Edit Data Siswa"><FaEdit /></button>
+                        <div style={{display: 'flex', gap: '8px', justifyContent: 'center'}}>
+                          <button onClick={() => handleEditClick(s)} style={{border: 'none', background: '#ffb300', color: '#fff', borderRadius: '6px', padding: '8px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'}} title="Edit"><FaEdit /></button>
+                          <button onClick={() => handleDeleteClick(s.id, s.nama)} style={{border: 'none', background: '#ffebee', color: '#d32f2f', borderRadius: '6px', padding: '8px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}} title="Hapus"><FaTrash /></button>
+                        </div>
                     </td>
                   </tr>
                 ))
@@ -166,25 +184,43 @@ const DataSiswa = () => {
         </div>
       </div>
 
-      {/* Modal Form */}
       {isModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{maxWidth: '650px', width: '90%'}}>
-            <h3 style={{borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '20px', color: '#333'}}>{isEditing ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}</h3>
+          <div className="modal-content">
+            <h3>{isEditing ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}</h3>
             <form className="profile-form" onSubmit={handleSubmit}>
-              <div style={{display: 'flex', gap: '20px', marginBottom: '15px'}}>
-                <div className="form-group" style={{flex: 1}}><label>NIS</label><input type="text" name="nis" value={formData.nis} onChange={handleInputChange} required placeholder="Contoh: 2024001" style={{width: '100%', boxSizing: 'border-box'}} /></div>
-                <div className="form-group" style={{flex: 1}}><label>Nama Lengkap</label><input type="text" name="nama" value={formData.nama} onChange={handleInputChange} required placeholder="Nama Siswa" style={{width: '100%', boxSizing: 'border-box'}} /></div>
+              <div className="form-row-2-col">
+                <div className="form-col"><label>NIS</label><input type="text" name="nis" value={formData.nis} onChange={handleInputChange} required placeholder="Contoh: 2024001" /></div>
+                <div className="form-col"><label>Nama Lengkap</label><input type="text" name="nama" value={formData.nama} onChange={handleInputChange} required placeholder="Nama Siswa" /></div>
               </div>
-              <div style={{display: 'flex', gap: '20px', marginBottom: '15px'}}>
-                <div className="form-group" style={{flex: 1}}><label>Jenis Kelamin</label><select name="jenis_kelamin" value={formData.jenis_kelamin} onChange={handleInputChange} required style={{width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontFamily: 'Poppins', backgroundColor: 'white', color: '#333', outline: 'none', boxSizing: 'border-box', cursor: 'pointer'}}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
-                <div className="form-group" style={{flex: 1}}><label>Kelas</label><select name="kelas" value={formData.kelas} onChange={handleInputChange} required style={{width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontFamily: 'Poppins', backgroundColor: 'white', color: '#333', outline: 'none', boxSizing: 'border-box', cursor: 'pointer'}}><option value="">-- Pilih Kelas --</option>{classList.map((cls) => (<option key={cls.id} value={cls.nama_kelas}>{cls.nama_kelas}</option>))}</select></div>
+              <div className="form-row-2-col">
+                <div className="form-col">
+                  <label>Jenis Kelamin</label>
+                  <select name="jenis_kelamin" value={formData.jenis_kelamin} onChange={handleInputChange} required>
+                    <option value="L">Laki-laki</option><option value="P">Perempuan</option>
+                  </select>
+                </div>
+                <div className="form-col">
+                  <label>Kelas</label>
+                  <select name="kelas" value={formData.kelas} onChange={handleInputChange} required>
+                    <option value="">-- Pilih Kelas --</option>
+                    {classList.map((cls) => (<option key={cls.id} value={cls.nama_kelas}>{cls.nama_kelas}</option>))}
+                  </select>
+                </div>
               </div>
-              <div className="form-group" style={{marginBottom: '15px'}}><label>No. HP / WA Orang Tua</label><input type="text" name="no_hp" value={formData.no_hp} onChange={handleInputChange} placeholder="08xxxxxxxxxx" style={{width: '100%', boxSizing: 'border-box'}} /></div>
-              <div className="form-group full-width" style={{marginBottom: '20px'}}><label>Alamat</label><textarea name="alamat" rows="3" value={formData.alamat} onChange={handleInputChange} style={{width: '100%', boxSizing: 'border-box', resize: 'none'}}></textarea></div>
-              <div className="modal-actions" style={{borderTop: '1px solid #eee', paddingTop: '20px'}}>
+              <div className="form-row-2-col">
+                <div className="form-col">
+                    <label>Password Akun {isEditing ? '(Isi jika ganti)' : '(Default: 123456)'}</label>
+                    <input type="password" name="password" value={formData.password || ''} onChange={handleInputChange} placeholder={isEditing ? "Biarkan kosong jika tetap" : "Masukkan password"} />
+                </div>
+                <div className="form-col"><label>No. HP</label><input type="text" name="no_hp" value={formData.no_hp} onChange={handleInputChange} placeholder="08xxxxxxxxxx" /></div>
+              </div>
+              <div className="form-field" style={{marginBottom: '20px'}}>
+                <label>Alamat</label><textarea name="alamat" rows="3" value={formData.alamat} onChange={handleInputChange}></textarea>
+              </div>
+              <div className="modal-actions">
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Batal</button>
-                <button type="submit" className="btn-submit" style={{backgroundColor: isEditing ? '#ffb300' : '#4a148c', color: isEditing ? '#333' : '#fff'}}>{isEditing ? 'Update Data' : 'Simpan Data'}</button>
+                <button type="submit" className="btn-submit">{isEditing ? 'Update Data' : 'Simpan Data'}</button>
               </div>
             </form>
           </div>

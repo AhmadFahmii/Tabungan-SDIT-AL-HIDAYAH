@@ -1,10 +1,35 @@
-export const fetchWithAuth = async (url, options = {}) => {
+// Tentukan alamat Backend di sini (Satu tempat untuk semua)
+const BASE_URL = 'http://localhost:5000';
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
+// Export helper ini agar tidak error jika ada file yang mengimpornya
+export const getApiUrl = (endpoint) => {
+    return endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`;
+};
+
+export const fetchWithAuth = async (endpoint, options = {}) => {
     let token = localStorage.getItem('token');
     
+    // Logika Pintar: Gabungkan dengan BASE_URL jika path relatif
+    const url = getApiUrl(endpoint);
+
     if (!token) {
         console.warn("⚠️ Tidak ada token. Redirecting to login...");
         logout();
-        return;
+        return Promise.reject("No token");
     }
 
     const headers = {
@@ -16,19 +41,35 @@ export const fetchWithAuth = async (url, options = {}) => {
     try {
         let response = await fetch(url, { ...options, headers });
 
-        // Jika token expired (403 Forbidden atau 401 Unauthorized)
+        // Cek apakah server mengembalikan HTML (Error 404/500 dari server yang salah)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") === -1) {
+            console.error(`❌ Server mengembalikan HTML, bukan JSON.`);
+            console.error(`URL yang diakses: ${url}`);
+            throw new Error("Backend server tidak merespons JSON. Pastikan backend running di port 5000.");
+        }
+
+        // Jika token expired (403/401)
         if (response.status === 403 || response.status === 401) {
-            console.warn(`⚠️ Token Expired (Status ${response.status}). Mencoba refresh...`);
-            
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then(token => {
+                    headers['Authorization'] = `Bearer ${token}`;
+                    return fetch(url, { ...options, headers });
+                }).catch(err => Promise.reject(err));
+            }
+
+            isRefreshing = true;
             const refreshToken = localStorage.getItem('refreshToken');
+
             if (!refreshToken) {
-                console.error("❌ Tidak ada Refresh Token. Logout.");
                 logout();
-                return response;
+                return Promise.reject("No refresh token");
             }
 
             try {
-                const refreshResponse = await fetch('http://localhost:5000/api/refresh-token', {
+                const refreshResponse = await fetch(`${BASE_URL}/api/refresh-token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: refreshToken })
@@ -37,20 +78,22 @@ export const fetchWithAuth = async (url, options = {}) => {
                 if (refreshResponse.ok) {
                     const data = await refreshResponse.json();
                     localStorage.setItem('token', data.accessToken);
-                    console.log("✅ Token berhasil diperbarui!");
-
-                    // Ulangi request asli dengan token baru
+                    processQueue(null, data.accessToken);
+                    isRefreshing = false;
+                    
                     headers['Authorization'] = `Bearer ${data.accessToken}`;
-                    response = await fetch(url, { ...options, headers });
+                    return await fetch(url, { ...options, headers });
                 } else {
-                    console.error("❌ Gagal refresh token (Server menolak). Logout.");
-                    const errText = await refreshResponse.text();
-                    console.error("Server Response:", errText);
+                    processQueue("Failed to refresh");
                     logout();
+                    return Promise.reject("Failed to refresh");
                 }
             } catch (refreshErr) {
-                console.error("❌ Error koneksi saat refresh token:", refreshErr);
+                processQueue(refreshErr);
                 logout();
+                return Promise.reject(refreshErr);
+            } finally {
+                isRefreshing = false;
             }
         }
 
@@ -62,10 +105,6 @@ export const fetchWithAuth = async (url, options = {}) => {
 };
 
 const logout = () => {
-    // Beri jeda 2 detik agar error terlihat di console sebelum reload
-    console.log("🔄 Logout dalam 2 detik...");
-    setTimeout(() => {
-        localStorage.clear();
-        window.location.href = '/login';
-    }, 2000);
+    localStorage.clear();
+    window.location.href = '/login';
 };

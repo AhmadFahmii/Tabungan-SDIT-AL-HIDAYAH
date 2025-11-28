@@ -20,13 +20,12 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const SavingsChart = ({ chartData }) => {
-  // Gunakan data props, atau array kosong jika belum ada data
   const data = (chartData && chartData.length > 0) ? chartData : [];
 
   return (
-    // HAPUS class 'dashboard-card' dan 'h4' agar tidak double dengan DashboardPage
-    <div style={{ width: '100%', height: 300 }}>
-      <ResponsiveContainer>
+    /* PERBAIKAN DI SINI: Tambahkan minWidth: 0 agar tidak error saat resize */
+    <div style={{ width: '100%', height: 300, minWidth: 0 }}>
+      <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
@@ -49,7 +48,7 @@ const SavingsChart = ({ chartData }) => {
           <Line
             type="monotone"
             dataKey="saldo"
-            stroke="#ffb300" /* Warna Kuning Emas */
+            stroke="#ffb300"
             strokeWidth={4}
             dot={{ r: 4, fill: '#ffb300', stroke: '#fff', strokeWidth: 2 }}
             activeDot={{ r: 7, fill: '#4a148c', stroke: '#fff', strokeWidth: 3 }}

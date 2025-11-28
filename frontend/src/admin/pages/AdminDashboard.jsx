@@ -5,8 +5,7 @@ const AdminDashboard = () => {
   const [totalSiswa, setTotalSiswa] = useState(0);
 
   useEffect(() => {
-    // Menggunakan fetchWithAuth
-    fetchWithAuth('http://localhost:5000/api/admin/students')
+    fetchWithAuth('/api/admin/students')
       .then(res => res.json())
       .then(data => {
          if(Array.isArray(data)) setTotalSiswa(data.length);

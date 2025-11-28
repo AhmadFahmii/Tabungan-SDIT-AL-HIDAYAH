@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DatePicker from "react-datepicker"; 
 import "react-datepicker/dist/react-datepicker.css"; 
 import { FaCalendarAlt } from 'react-icons/fa'; 
-import { fetchWithAuth } from '../../utils/api'; 
+import { fetchWithAuth } from '../../utils/api';
 
 const InputTransaksi = () => {
   const [students, setStudents] = useState([]);
@@ -11,7 +11,7 @@ const InputTransaksi = () => {
   const [formData, setFormData] = useState({ siswa_id: '', tipe: 'masuk', jumlah: '', keterangan: '' });
 
   useEffect(() => {
-    fetchWithAuth('http://localhost:5000/api/admin/students')
+    fetchWithAuth('/api/admin/students')
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setStudents(data); })
       .catch(err => console.error("Gagal ambil siswa:", err));
@@ -30,7 +30,7 @@ const InputTransaksi = () => {
     const dataToSend = { ...formData, tanggal: formattedDate };
 
     try {
-      const response = await fetchWithAuth('http://localhost:5000/api/admin/transaksi', {
+      const response = await fetchWithAuth('/api/admin/transaksi', {
         method: 'POST',
         body: JSON.stringify(dataToSend),
       });
@@ -42,11 +42,10 @@ const InputTransaksi = () => {
       } else {
         alert(`❌ GAGAL: ${result.message}`);
       }
-    } catch (error) { console.error("Error submit:", error); alert("Error koneksi"); } 
+    } catch (error) { console.error("Error submit:", error); } 
     finally { setLoading(false); }
   };
 
-  // ... (return JSX sama, tidak berubah)
   return (
     <div>
       <h2 style={{marginBottom: '20px', color: '#2E7D32'}}>Setor Tunai</h2>

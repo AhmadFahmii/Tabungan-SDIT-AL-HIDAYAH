@@ -1,20 +1,26 @@
 const mysql = require('mysql2');
+require('dotenv').config();
 
-// Konfigurasi koneksi ke database XAMPP
+// Konfigurasi Database dari Environment Variables
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',      // Default user XAMPP
-  password: '',      // Default password XAMPP (kosong)
-  database: 'db_tabungan_sdit' // Nama database yang baru kita buat
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'db_tabungan_sdit',
+  port: process.env.DB_PORT || 3306
 });
 
-// Cek koneksi
+// Test Koneksi
 db.connect((err) => {
   if (err) {
     console.error('❌ Gagal Konek ke Database:', err.message);
-  } else {
-    console.log('✅ Berhasil Terhubung ke Database MySQL!');
+    console.error('📝 Cek konfigurasi di file .env:');
+    console.error(`   DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
+    console.error(`   DB_USER: ${process.env.DB_USER || 'root'}`);
+    console.error(`   DB_NAME: ${process.env.DB_NAME || 'tabungan_sdit'}`);
+    process.exit(1);
   }
+  console.log('✅ Berhasil Terhubung ke Database MySQL!');
 });
 
 module.exports = db;

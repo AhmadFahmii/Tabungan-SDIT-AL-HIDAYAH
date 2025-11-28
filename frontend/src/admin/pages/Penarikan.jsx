@@ -11,7 +11,7 @@ const Penarikan = () => {
   const [formData, setFormData] = useState({ siswa_id: '', tipe: 'keluar', jumlah: '', keterangan: '' });
 
   useEffect(() => {
-    fetchWithAuth('http://localhost:5000/api/admin/students')
+    fetchWithAuth('/api/admin/students')
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setStudents(data); })
       .catch(err => console.error("Gagal ambil siswa:", err));
@@ -35,7 +35,7 @@ const Penarikan = () => {
     const dataToSend = { ...formData, tanggal: formattedDate };
 
     try {
-      const response = await fetchWithAuth('http://localhost:5000/api/admin/transaksi', {
+      const response = await fetchWithAuth('/api/admin/transaksi', {
         method: 'POST',
         body: JSON.stringify(dataToSend),
       });
@@ -51,7 +51,6 @@ const Penarikan = () => {
     finally { setLoading(false); }
   };
 
-  // ... (return JSX sama)
   return (
     <div>
       <h2 style={{marginBottom: '20px', color: '#C62828'}}>Penarikan Tunai</h2>

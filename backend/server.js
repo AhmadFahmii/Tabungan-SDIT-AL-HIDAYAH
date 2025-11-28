@@ -3,11 +3,12 @@ const cors = require('cors');
 const db = require('./db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
-const port = 5000;
-const ACCESS_TOKEN_SECRET = 'rahasia_akses_sdit_2025'; 
-const REFRESH_TOKEN_SECRET = 'rahasia_refresh_sdit_super_secure';
+const port = process.env.PORT || 5000;
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'rahasia_akses_sdit_2025'; 
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'rahasia_refresh_sdit_super_secure';
 
 app.use(cors());
 app.use(express.json());
@@ -27,12 +28,19 @@ const authenticateToken = (req, res, next) => {
 
 // Helper Tokens
 const generateAccessToken = (user) => {
-  // Access Token pendek (15m)
-  return jwt.sign({ id: user.id, role: user.role, nama: user.nama_lengkap || user.nama }, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ 
+    id: user.id, 
+    role: user.role, 
+    nama: user.nama 
+  }, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
 };
+
 const generateRefreshToken = (user) => {
-  // Refresh Token panjang (7d)
-  return jwt.sign({ id: user.id, role: user.role, nama: user.nama_lengkap || user.nama }, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ 
+    id: user.id, 
+    role: user.role, 
+    nama: user.nama 
+  }, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
 };
 
 app.get('/', (req, res) => res.send('Server Ready!'));
@@ -52,7 +60,10 @@ app.post('/api/login', (req, res) => {
     if (resultAdmin.length > 0) {
        const u = resultAdmin[0];
        const isMatch = await bcrypt.compare(password, u.password) || u.password === password;
-       if (isMatch) { user = u; role = 'admin'; }
+       if (isMatch) { 
+         user = u; 
+         role = 'admin'; 
+       }
     } 
     
     if (!user) {
@@ -62,49 +73,96 @@ app.post('/api/login', (req, res) => {
            if (resultS.length > 0) {
               const u = resultS[0];
               const isMatch = await bcrypt.compare(password, u.password) || u.password === password;
-              if (isMatch) { user = u; role = 'siswa'; }
+              if (isMatch) { 
+                user = u; 
+                role = 'siswa'; 
+              }
            }
            
            if (!user) return res.status(401).json({ message: "Login Gagal" });
 
-           // Generate Tokens
-           const userData = { id: user.id, role, nama: user.nama_lengkap || user.nama, nis: user.nis };
+           // PERBAIKAN: Standardisasi userData
+           const userData = { 
+             id: user.id, 
+             role, 
+             nama: user.nama, // siswa menggunakan field 'nama'
+             nis: user.nis 
+           };
+           
            const accessToken = generateAccessToken(userData);
            const refreshToken = generateRefreshToken(userData);
 
            // Simpan Refresh Token ke DB
-           db.query("INSERT INTO refresh_tokens (token, user_id) VALUES (?, ?)", [refreshToken, user.id], (errT) => {
+           db.query("INSERT INTO refresh_tokens (token, user_id) VALUES (?, ?)", 
+             [refreshToken, user.id], (errT) => {
                if (errT) console.error("Gagal simpan token:", errT);
-               // Kirim token ke frontend
-               res.json({ success: true, accessToken, refreshToken, role, user: userData });
+               res.json({ 
+                 success: true, 
+                 accessToken, 
+                 refreshToken, 
+                 role, 
+                 user: userData 
+               });
            });
         });
     } else {
-        const userData = { id: user.id, role, nama: user.nama_lengkap || user.nama };
+        // PERBAIKAN: Standardisasi userData untuk admin
+        const userData = { 
+          id: user.id, 
+          role, 
+          nama: user.nama_lengkap // admin menggunakan 'nama_lengkap'
+        };
+        
         const accessToken = generateAccessToken(userData);
         const refreshToken = generateRefreshToken(userData);
 
-        db.query("INSERT INTO refresh_tokens (token, user_id) VALUES (?, ?)", [refreshToken, user.id], (errT) => {
+        db.query("INSERT INTO refresh_tokens (token, user_id) VALUES (?, ?)", 
+          [refreshToken, user.id], (errT) => {
             if (errT) console.error("Gagal simpan token:", errT);
-            res.json({ success: true, accessToken, refreshToken, role, user: userData });
+            res.json({ 
+              success: true, 
+              accessToken, 
+              refreshToken, 
+              role, 
+              user: userData 
+            });
         });
     }
   });
 });
 
-// --- 2. REFRESH TOKEN (PENTING UNTUK MENCEGAH LOGOUT) ---
+// --- 2. REFRESH TOKEN (PERBAIKAN) ---
 app.post('/api/refresh-token', (req, res) => {
   const { token } = req.body;
   if (!token) return res.sendStatus(401);
 
   // Cek di Database apakah Refresh Token valid
   db.query("SELECT * FROM refresh_tokens WHERE token = ?", [token], (err, result) => {
-      if (err || result.length === 0) return res.sendStatus(403); // Forbidden jika tidak ada/valid
+      if (err) {
+        console.error("DB Error saat cek refresh token:", err);
+        return res.sendStatus(500);
+      }
+      
+      if (result.length === 0) {
+        console.warn("Refresh token tidak ditemukan di database");
+        return res.sendStatus(403);
+      }
 
       jwt.verify(token, REFRESH_TOKEN_SECRET, (err, user) => {
-          if (err) return res.sendStatus(403);
-          const userData = { id: user.id, role: user.role, nama: user.nama };
-          const accessToken = generateAccessToken(userData); // Buat akses token baru
+          if (err) {
+            console.error("JWT Verify Error:", err);
+            return res.sendStatus(403);
+          }
+          
+          // Generate access token baru dengan data yang sama
+          const userData = { 
+            id: user.id, 
+            role: user.role, 
+            nama: user.nama 
+          };
+          
+          const accessToken = generateAccessToken(userData);
+          console.log("✅ Access token berhasil di-refresh untuk user:", user.nama);
           res.json({ accessToken });
       });
   });

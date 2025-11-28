@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaDownload, FaFilter, FaFilePdf } from 'react-icons/fa';
+import { FaCalendarAlt, FaDownload, FaFilter, FaFilePdf } from 'react-icons/fa'; 
 import { exportToExcel } from '../../utils/exportToExcel'; 
 import { exportToPDF } from '../../utils/exportToPDF'; 
 import { fetchWithAuth } from '../../utils/api'; 
@@ -29,7 +29,7 @@ const LaporanAdmin = () => {
     setLoading(true);
     const { start, end } = getDateRange(period);
 
-    fetchWithAuth(`http://localhost:5000/api/admin/laporan?startDate=${start}&endDate=${end}`)
+    fetchWithAuth(`/api/admin/laporan?startDate=${start}&endDate=${end}`)
       .then(res => res.json())
       .then(data => {
         setTransactions(data);

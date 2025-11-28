@@ -20,13 +20,13 @@ const DashboardPage = () => {
     const user = JSON.parse(userString);
     const userId = user.id;
 
-    // Ganti fetch biasa dengan fetchWithAuth (Header Auth otomatis ditambahkan)
-    fetchWithAuth(`http://localhost:5000/api/siswa/${userId}`)
+    // Cukup gunakan path relatif, api.js akan menambahkan http://localhost:5000
+    fetchWithAuth(`/api/siswa/${userId}`)
       .then(res => res.json())
       .then(data => setSaldo(data.saldo || 0))
       .catch(err => console.error("Gagal ambil saldo:", err));
 
-    fetchWithAuth(`http://localhost:5000/api/transaksi/${userId}`)
+    fetchWithAuth(`/api/transaksi/${userId}`)
       .then(res => res.json())
       .then(data => {
         if(Array.isArray(data)) setRawTransactions(data);
