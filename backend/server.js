@@ -6,104 +6,142 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = 5000;
-const JWT_SECRET = 'rahasia_dapur_sdit_alhidayah_2025'; 
+const ACCESS_TOKEN_SECRET = 'rahasia_akses_sdit_2025'; 
+const REFRESH_TOKEN_SECRET = 'rahasia_refresh_sdit_super_secure';
 
 app.use(cors());
 app.use(express.json());
 
-// --- MIDDLEWARE AUTH (Pengecekan Token) ---
+// --- Middleware Auth ---
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; 
   if (!token) return res.status(401).json({ message: "Akses Ditolak" });
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, ACCESS_TOKEN_SECRET, (err, user) => {
     if (err) return res.status(403).json({ message: "Token Invalid" });
     req.user = user;
     next();
   });
 };
 
-// --- 1. Cek Server ---
-app.get('/', (req, res) => {
-  res.send('Server Backend SDIT AL-HIDAYAH Berjalan Lancar!');
-});
+// Helper Tokens
+const generateAccessToken = (user) => {
+  // Access Token pendek (15m)
+  return jwt.sign({ id: user.id, role: user.role, nama: user.nama_lengkap || user.nama }, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+};
+const generateRefreshToken = (user) => {
+  // Refresh Token panjang (7d)
+  return jwt.sign({ id: user.id, role: user.role, nama: user.nama_lengkap || user.nama }, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+};
 
-// --- 2. API LOGIN (Siswa & Admin) ---
+app.get('/', (req, res) => res.send('Server Ready!'));
+
+// --- 1. LOGIN (Generate 2 Tokens) ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ message: "Lengkapi data!" });
 
-  // A. Cek di Tabel Admin
   const sqlAdmin = "SELECT * FROM admin WHERE username = ?";
   db.query(sqlAdmin, [username], async (err, resultAdmin) => {
     if (err) return res.status(500).json(err);
     
+    let user = null;
+    let role = '';
+
     if (resultAdmin.length > 0) {
-       const user = resultAdmin[0];
-       // Cek Password (Support Plain text atau Hash)
-       const isMatch = await bcrypt.compare(password, user.password) || user.password === password;
-       
-       if (isMatch) {
-          const token = jwt.sign({ id: user.id, role: 'admin', nama: user.nama_lengkap }, JWT_SECRET, { expiresIn: '24h' });
-          return res.json({ 
-            success: true, 
-            token, 
-            role: 'admin', 
-            user: { id: user.id, nama: user.nama_lengkap } 
-          });
-       }
-    }
+       const u = resultAdmin[0];
+       const isMatch = await bcrypt.compare(password, u.password) || u.password === password;
+       if (isMatch) { user = u; role = 'admin'; }
+    } 
     
-    // B. Cek di Tabel Siswa
-    const sqlSiswa = "SELECT * FROM siswa WHERE nis = ?";
-    db.query(sqlSiswa, [username], async (errS, resultS) => {
-       if (errS) return res.status(500).json(errS);
-       
-       if (resultS.length > 0) {
-          const user = resultS[0];
-          const isMatch = await bcrypt.compare(password, user.password) || user.password === password;
-          
-          if (isMatch) {
-             const token = jwt.sign({ id: user.id, role: 'siswa', nama: user.nama, nis: user.nis }, JWT_SECRET, { expiresIn: '24h' });
-             return res.json({ 
-                success: true, 
-                token, 
-                role: 'siswa', 
-                user: { 
-                    id: user.id, 
-                    nama: user.nama, 
-                    nis: user.nis,
-                    jenis_kelamin: user.jenis_kelamin // Penting untuk foto profil
-                } 
-             });
-          }
-       }
-       return res.status(401).json({ message: "Username/NIS atau Password salah!" });
-    });
+    if (!user) {
+        const sqlSiswa = "SELECT * FROM siswa WHERE nis = ?";
+        db.query(sqlSiswa, [username], async (errS, resultS) => {
+           if (errS) return res.status(500).json(errS);
+           if (resultS.length > 0) {
+              const u = resultS[0];
+              const isMatch = await bcrypt.compare(password, u.password) || u.password === password;
+              if (isMatch) { user = u; role = 'siswa'; }
+           }
+           
+           if (!user) return res.status(401).json({ message: "Login Gagal" });
+
+           // Generate Tokens
+           const userData = { id: user.id, role, nama: user.nama_lengkap || user.nama, nis: user.nis };
+           const accessToken = generateAccessToken(userData);
+           const refreshToken = generateRefreshToken(userData);
+
+           // Simpan Refresh Token ke DB
+           db.query("INSERT INTO refresh_tokens (token, user_id) VALUES (?, ?)", [refreshToken, user.id], (errT) => {
+               if (errT) console.error("Gagal simpan token:", errT);
+               // Kirim token ke frontend
+               res.json({ success: true, accessToken, refreshToken, role, user: userData });
+           });
+        });
+    } else {
+        const userData = { id: user.id, role, nama: user.nama_lengkap || user.nama };
+        const accessToken = generateAccessToken(userData);
+        const refreshToken = generateRefreshToken(userData);
+
+        db.query("INSERT INTO refresh_tokens (token, user_id) VALUES (?, ?)", [refreshToken, user.id], (errT) => {
+            if (errT) console.error("Gagal simpan token:", errT);
+            res.json({ success: true, accessToken, refreshToken, role, user: userData });
+        });
+    }
   });
 });
 
-// --- API SISWA (Protected) ---
+// --- 2. REFRESH TOKEN (PENTING UNTUK MENCEGAH LOGOUT) ---
+app.post('/api/refresh-token', (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.sendStatus(401);
 
-// Data Profil Siswa
+  // Cek di Database apakah Refresh Token valid
+  db.query("SELECT * FROM refresh_tokens WHERE token = ?", [token], (err, result) => {
+      if (err || result.length === 0) return res.sendStatus(403); // Forbidden jika tidak ada/valid
+
+      jwt.verify(token, REFRESH_TOKEN_SECRET, (err, user) => {
+          if (err) return res.sendStatus(403);
+          const userData = { id: user.id, role: user.role, nama: user.nama };
+          const accessToken = generateAccessToken(userData); // Buat akses token baru
+          res.json({ accessToken });
+      });
+  });
+});
+
+// --- 3. LOGOUT ---
+app.post('/api/logout', (req, res) => {
+    const { token } = req.body;
+    db.query("DELETE FROM refresh_tokens WHERE token = ?", [token], (err) => {
+        if(err) return res.status(500).json(err);
+        res.sendStatus(204);
+    });
+});
+
+// --- API DATA SISWA & ADMIN ---
 app.get('/api/siswa/:id', authenticateToken, (req, res) => {
   db.query("SELECT * FROM siswa WHERE id = ?", [req.params.id], (err, result) => {
     if (err) return res.status(500).json(err);
-    if (result.length === 0) return res.status(404).json({ message: "Siswa tidak ditemukan" });
     res.json(result[0]);
   });
 });
 
-// Saldo Siswa
 app.get('/api/saldo/:id', authenticateToken, (req, res) => {
-  db.query("SELECT saldo FROM siswa WHERE id = ?", [req.params.id], (err, result) => {
+  db.query("SELECT saldo, target_tabungan FROM siswa WHERE id = ?", [req.params.id], (err, result) => {
     if (err) return res.status(500).json(err);
     res.json(result[0]);
   });
 });
 
-// Riwayat Transaksi Siswa
+app.put('/api/siswa/:id/target', authenticateToken, (req, res) => {
+    const { target } = req.body;
+    db.query("UPDATE siswa SET target_tabungan = ? WHERE id = ?", [target, req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Target updated" });
+    });
+});
+
 app.get('/api/transaksi/:id', authenticateToken, (req, res) => {
   db.query("SELECT * FROM transaksi WHERE siswa_id = ? ORDER BY tanggal DESC", [req.params.id], (err, result) => {
     if (err) return res.status(500).json(err);
@@ -111,17 +149,13 @@ app.get('/api/transaksi/:id', authenticateToken, (req, res) => {
   });
 });
 
-// --- API ADMIN (Protected) ---
-
-// List Semua Siswa
 app.get('/api/admin/students', authenticateToken, (req, res) => {
-  db.query("SELECT id, nis, nama, jenis_kelamin, kelas, saldo, no_hp, alamat FROM siswa ORDER BY nama ASC", (err, result) => {
+  db.query("SELECT * FROM siswa ORDER BY nama ASC", (err, result) => {
     if (err) return res.status(500).json(err);
     res.json(result);
   });
 });
 
-// List Data Kelas
 app.get('/api/admin/kelas', authenticateToken, (req, res) => {
   db.query("SELECT * FROM data_kelas ORDER BY tingkat ASC, nama_kelas ASC", (err, result) => {
     if (err) return res.status(500).json(err);
@@ -129,95 +163,71 @@ app.get('/api/admin/kelas', authenticateToken, (req, res) => {
   });
 });
 
-// Input Transaksi (Setor/Tarik) + Update Saldo
 app.post('/api/admin/transaksi', authenticateToken, (req, res) => {
   const { siswa_id, tipe, jumlah, keterangan, tanggal } = req.body;
-  
-  if (!siswa_id || !tipe || !jumlah || !tanggal) {
-    return res.status(400).json({ message: "Data tidak lengkap" });
-  }
-
   const sql = "INSERT INTO transaksi (siswa_id, tipe, jumlah, keterangan, tanggal) VALUES (?, ?, ?, ?, ?)";
   db.query(sql, [siswa_id, tipe, jumlah, keterangan, tanggal], (err, result) => {
     if (err) return res.status(500).json(err);
-    
-    const sqlUpdate = tipe === 'masuk' ? 
-      "UPDATE siswa SET saldo = saldo + ? WHERE id = ?" : 
-      "UPDATE siswa SET saldo = saldo - ? WHERE id = ?";
-      
+    const sqlUpdate = tipe === 'masuk' ? "UPDATE siswa SET saldo = saldo + ? WHERE id = ?" : "UPDATE siswa SET saldo = saldo - ? WHERE id = ?";
     db.query(sqlUpdate, [jumlah, siswa_id], (errUp) => {
        if (errUp) return res.status(500).json(errUp);
-       res.json({ message: "Transaksi Berhasil Disimpan!" });
+       res.json({ message: "Transaksi Berhasil" });
     });
   });
 });
 
-// Tambah Siswa Baru
 app.post('/api/admin/students', authenticateToken, async (req, res) => {
-  const { nis, nama, jenis_kelamin, kelas, no_hp, alamat, password } = req.body;
-  const plainPassword = password || '123456';
-  const jk = jenis_kelamin || 'L';
-  
-  try {
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-    const sql = "INSERT INTO siswa (nis, nama, jenis_kelamin, kelas, no_hp, alamat, password, saldo) VALUES (?, ?, ?, ?, ?, ?, ?, 0)";
-    db.query(sql, [nis, nama, jk, kelas, no_hp, alamat, hashedPassword], (err, result) => {
-        if (err) {
-            if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: "NIS sudah terdaftar" });
-            return res.status(500).json(err);
-        }
-        res.json({ message: "Siswa berhasil ditambahkan" });
-    });
-  } catch (error) {
-      res.status(500).json({ message: "Error hashing password" });
-  }
+    const { nis, nama, jenis_kelamin, kelas, no_hp, alamat, password } = req.body;
+    const pass = password || '123456';
+    try {
+        const hash = await bcrypt.hash(pass, 10);
+        db.query("INSERT INTO siswa (nis, nama, jenis_kelamin, kelas, no_hp, alamat, password, saldo) VALUES (?, ?, ?, ?, ?, ?, ?, 0)", 
+        [nis, nama, jenis_kelamin || 'L', kelas, no_hp, alamat, hash], (err) => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Siswa added" });
+        });
+    } catch(e) { res.status(500).json(e); }
 });
 
-// Update Data Siswa
 app.put('/api/admin/students/:id', authenticateToken, async (req, res) => {
-  const id = req.params.id;
-  const { nis, nama, jenis_kelamin, kelas, no_hp, alamat, password } = req.body;
-  
-  try {
-    let sql, params;
-    if (password && password.trim() !== "") {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        sql = "UPDATE siswa SET nis = ?, nama = ?, jenis_kelamin = ?, kelas = ?, no_hp = ?, alamat = ?, password = ? WHERE id = ?";
-        params = [nis, nama, jenis_kelamin, kelas, no_hp, alamat, hashedPassword, id];
-    } else {
-        sql = "UPDATE siswa SET nis = ?, nama = ?, jenis_kelamin = ?, kelas = ?, no_hp = ?, alamat = ? WHERE id = ?";
-        params = [nis, nama, jenis_kelamin, kelas, no_hp, alamat, id];
-    }
-    
-    db.query(sql, params, (err, result) => {
-        if (err) {
-           if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: "NIS sudah digunakan!" }); 
-           return res.status(500).json(err);
+    const { nis, nama, jenis_kelamin, kelas, no_hp, alamat, password } = req.body;
+    try {
+        if (password) {
+            const hash = await bcrypt.hash(password, 10);
+            db.query("UPDATE siswa SET nis=?, nama=?, jenis_kelamin=?, kelas=?, no_hp=?, alamat=?, password=? WHERE id=?", 
+            [nis, nama, jenis_kelamin, kelas, no_hp, alamat, hash, req.params.id], (err) => {
+                if (err) return res.status(500).json(err);
+                res.json({ message: "Updated" });
+            });
+        } else {
+            db.query("UPDATE siswa SET nis=?, nama=?, jenis_kelamin=?, kelas=?, no_hp=?, alamat=? WHERE id=?", 
+            [nis, nama, jenis_kelamin, kelas, no_hp, alamat, req.params.id], (err) => {
+                if (err) return res.status(500).json(err);
+                res.json({ message: "Updated" });
+            });
         }
-        res.json({ message: "Data siswa berhasil diupdate" });
+    } catch(e) { res.status(500).json(e); }
+});
+
+app.delete('/api/admin/students/:id', authenticateToken, (req, res) => {
+    db.query("DELETE FROM transaksi WHERE siswa_id = ?", [req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        db.query("DELETE FROM siswa WHERE id = ?", [req.params.id], (errS) => {
+            if (errS) return res.status(500).json(errS);
+            res.json({ message: "Deleted" });
+        });
     });
-  } catch (error) {
-      res.status(500).json({ message: "Error updating student" });
-  }
 });
 
-// Laporan Keuangan
 app.get('/api/admin/laporan', authenticateToken, (req, res) => {
-  const { startDate, endDate } = req.query;
-  const sql = `
-    SELECT t.id, t.tipe, t.jumlah, t.tanggal, s.nama, s.kelas, s.nis
-    FROM transaksi t
-    JOIN siswa s ON t.siswa_id = s.id
-    WHERE DATE(t.tanggal) BETWEEN ? AND ?
-    ORDER BY t.tanggal DESC
-  `;
-  db.query(sql, [startDate, endDate], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json(result);
-  });
+    const { startDate, endDate } = req.query;
+    db.query(`SELECT t.*, s.nama, s.kelas, s.nis FROM transaksi t JOIN siswa s ON t.siswa_id = s.id WHERE DATE(t.tanggal) BETWEEN ? AND ? ORDER BY t.tanggal DESC`, 
+    [startDate, endDate], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json(result);
+    });
 });
 
-// Manajemen Akun Admin
 app.get('/api/admin/accounts', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
     db.query("SELECT id, username, nama_lengkap, created_at FROM admin ORDER BY nama_lengkap ASC", (err, result) => {
@@ -229,17 +239,15 @@ app.get('/api/admin/accounts', authenticateToken, (req, res) => {
 app.post('/api/admin/accounts', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
     const { username, password, nama_lengkap } = req.body;
-    const sql = "INSERT INTO admin (username, password, nama_lengkap) VALUES (?, ?, ?)";
-    db.query(sql, [username, password, nama_lengkap], (err, result) => {
+    db.query("INSERT INTO admin (username, password, nama_lengkap) VALUES (?, ?, ?)", [username, password, nama_lengkap], (err) => {
         if (err) return res.status(500).json(err);
         res.json({ message: "Admin added" });
     });
 });
 
 app.delete('/api/admin/accounts/:id', authenticateToken, (req, res) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ message: "Forbidden" });
-    if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ message: "Cannot delete self" });
-    db.query("DELETE FROM admin WHERE id = ?", [req.params.id], (err, result) => {
+    if (parseInt(req.params.id) === req.user.id) return res.status(400).json({message: "Cannot delete self"});
+    db.query("DELETE FROM admin WHERE id = ?", [req.params.id], (err) => {
         if (err) return res.status(500).json(err);
         res.json({ message: "Admin deleted" });
     });

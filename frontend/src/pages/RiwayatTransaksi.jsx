@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaSearch, FaArrowDown, FaArrowUp, FaDownload } from 'react-icons/fa';
 import { exportToExcel } from '../utils/exportToExcel';
+import { fetchWithAuth } from '../utils/api'; 
 
 const RiwayatTransaksi = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,17 +10,13 @@ const RiwayatTransaksi = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
-    
-    if (!token || !userString) return;
-
+    if (!userString) return;
     const user = JSON.parse(userString);
-    const userId = user.id; // Hapus Fallback ke 1
+    const userId = user.id; 
 
-    fetch(`http://localhost:5000/api/transaksi/${userId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    // Ganti fetch dengan fetchWithAuth
+    fetchWithAuth(`http://localhost:5000/api/transaksi/${userId}`)
       .then(response => response.json())
       .then(data => {
         setTransactions(Array.isArray(data) ? data : []);
@@ -31,9 +28,6 @@ const RiwayatTransaksi = () => {
       });
   }, []);
 
-  // ... (Sisa kode format rupiah, filter, dan render tabel SAMA PERSIS) ...
-  // Bagian bawah tidak ada hardcoded ID, jadi aman.
-  
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const options = { day: 'numeric', month: 'long', year: 'numeric' };
@@ -115,7 +109,6 @@ const RiwayatTransaksi = () => {
             </tbody>
           </table>
         </div>
-        {/* Pagination Statik */}
         <div className="pagination"><button disabled>Previous</button><button className="active">1</button><button>Next</button></div>
       </div>
     </div>

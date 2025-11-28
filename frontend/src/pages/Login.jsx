@@ -2,29 +2,33 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaLock, FaUser } from 'react-icons/fa'; 
 import LogoSekolah from '../assets/logo-sdit-alhidayah.png';
-import BoyProfile from '../assets/boy.png'; 
-import GirlProfile from '../assets/girl.png';
 
 const Login = () => {
   const navigate = useNavigate();
   
+  // State untuk menyimpan data form (username & password)
   const [formData, setFormData] = useState({ username: '', password: '' });
+  
+  // State untuk menyimpan pesan error jika login gagal
   const [error, setError] = useState('');
+  
+  // State untuk loading saat proses login
   const [loading, setLoading] = useState(false);
 
-  // State untuk menampilkan foto profil dinamis (Default logo sekolah)
-  const [profileImage, setProfileImage] = useState(LogoSekolah);
-
+  // Handler saat input diketik
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Handler saat form di-submit (Tombol Masuk ditekan)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setError(''); // Reset error sebelum mencoba login
+    setLoading(true); // Aktifkan loading
 
     try {
+      // Panggil API Login
+      // Backend akan otomatis mengecek ke tabel admin dulu, lalu tabel siswa
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -34,43 +38,37 @@ const Login = () => {
       const result = await response.json();
 
       if (result.success) {
-        // Simpan data sesi
-        localStorage.setItem('token', result.token);
+        // JIKA LOGIN SUKSES:
+        
+        // 1. Simpan data sesi ke LocalStorage agar tidak hilang saat refresh
+        localStorage.setItem('token', result.token); // Simpan Token JWT
         localStorage.setItem('user', JSON.stringify(result.user));
         localStorage.setItem('role', result.role);
         localStorage.setItem('isLoggedIn', 'true');
 
-        // Logika Pemilihan Foto Profil berdasarkan Jenis Kelamin
-        let userPhoto = LogoSekolah; // Default
-        if (result.role === 'siswa') {
-            if (result.user.jenis_kelamin === 'L') {
-                userPhoto = BoyProfile;
-            } else if (result.user.jenis_kelamin === 'P') {
-                userPhoto = GirlProfile;
-            }
-            // Simpan URL foto ke localStorage agar bisa dipakai di Header
-            localStorage.setItem('userPhoto', userPhoto);
-            setProfileImage(userPhoto); // Update state untuk efek visual sesaat
-        } else {
-             localStorage.setItem('userPhoto', LogoSekolah); // Admin pakai logo sekolah
-        }
-
+        // 2. Tampilkan pesan sukses
         alert(`Login Berhasil! Selamat Datang, ${result.user.nama}`);
         
+        // 3. Redirect ke halaman yang sesuai berdasarkan peran (role)
         if (result.role === 'admin') {
           navigate('/admin');
         } else {
           navigate('/');
         }
+        
+        // 4. Reload halaman agar komponen App.jsx membaca ulang localStorage
+        // dan memperbarui tampilan header/sidebar
         window.location.reload(); 
       } else {
+        // JIKA LOGIN GAGAL (Password salah / User tidak ditemukan)
         setError(result.message);
       }
     } catch (err) {
+      // JIKA GAGAL KONEKSI KE SERVER
       console.error(err);
-      setError("Gagal terhubung ke server.");
+      setError("Gagal terhubung ke server. Pastikan backend menyala.");
     } finally {
-      setLoading(false);
+      setLoading(false); // Matikan loading
     }
   };
 
@@ -78,18 +76,22 @@ const Login = () => {
     <div className="login-container">
       <div className="login-card center-mode">
         
+        {/* Header Login dengan Logo */}
         <div className="login-header">
           <div className="logo-circle">
-             {/* Tampilkan gambar profil dinamis */}
-             <img src={profileImage} alt="Logo/Profil" className="login-logo" />
+             <img src={LogoSekolah} alt="Logo SDIT" className="login-logo" />
           </div>
           <h2>SDIT AL-HIDAYAH</h2>
           <p>Sistem Informasi Tabungan Siswa</p>
         </div>
 
+        {/* Form Login */}
         <form onSubmit={handleSubmit} className="login-form">
+          
+          {/* Pesan Error jika ada */}
           {error && <div className="error-message">{error}</div>}
           
+          {/* Input Username / NIS */}
           <div className="input-group">
             <div className="input-icon"><FaUser /></div>
             <input 
@@ -103,6 +105,7 @@ const Login = () => {
             />
           </div>
 
+          {/* Input Password */}
           <div className="input-group">
             <div className="input-icon"><FaLock /></div>
             <input 
@@ -115,6 +118,7 @@ const Login = () => {
             />
           </div>
 
+          {/* Tombol Masuk */}
           <button type="submit" className="btn-login" disabled={loading}>
             {loading ? 'Memproses...' : 'MASUK'}
           </button>

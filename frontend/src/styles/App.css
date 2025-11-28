@@ -68,6 +68,9 @@ body {
   position: relative;
   overflow: visible;
   z-index: 20;
+  min-width: 0;
+  width: 260px; /* Tambahan - lebar sidebar fixed */
+  box-sizing: border-box; /* Tambahan */
 }
 
 .sidebar-logo {
@@ -76,6 +79,7 @@ body {
   margin-bottom: 30px;
   justify-content: center;
   padding-left: 0;
+  overflow: hidden;
 }
 
 .sidebar-school-logo {
@@ -84,6 +88,12 @@ body {
   max-height: 80px;
   margin-bottom: 10px;
   transition: max-height 0.3s ease-in-out, margin-bottom 0.3s ease-in-out;
+}
+
+.sidebar-menu {
+  overflow-x: hidden;
+  overflow-y: auto;
+  flex: 1; /* Tambahan - agar menu mengisi ruang */
 }
 
 .sidebar-menu ul {
@@ -99,12 +109,18 @@ body {
 .sidebar-menu a {
   display: flex;
   align-items: center;
-  padding: 14px 20px;
+  padding: 14px 16px; /* Sesuaikan padding */
   border-radius: 10px;
   color: #e0e0e0;
   text-decoration: none;
   transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
   font-weight: 500;
+  white-space: normal; /* Ubah dari nowrap ke normal untuk desktop */
+  overflow: visible; /* Ubah dari hidden */
+  min-width: 0;
+  width: 100%; /* Tambahan - full width */
+  box-sizing: border-box; /* Tambahan */
+  line-height: 1.4; /* Tambahan - jarak antar baris */
 }
 
 .sidebar-menu a:hover {
@@ -124,19 +140,33 @@ body {
 }
 
 .sidebar-menu-icon {
-  margin-right: 14px;
+  margin-right: 12px; /* Sesuaikan margin */
   font-size: 22px;
   transition: transform 0.2s ease;
+  flex-shrink: 0;
+  display: inline-flex; /* Tambahan */
+  align-items: center; /* Tambahan */
+  justify-content: center; /* Tambahan */
+  width: 24px; /* Tambahan - lebar fixed untuk alignment */
+}
+
+.menu-text {
+  overflow: visible; /* Ubah dari hidden */
+  white-space: normal; /* Tambahan - allow wrap */
+  flex: 1;
+  min-width: 0;
+  word-break: break-word; /* Tambahan - break kata panjang */
 }
 
 .sidebar-menu-indicator {
-  margin-left: auto;
-  width: 10px;
-  height: 10px;
+  margin-left: 8px; /* Sesuaikan margin */
+  width: 8px; /* Sedikit lebih kecil */
+  height: 8px;
   background-color: #ffb300;
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.3s ease;
+  flex-shrink: 0;
 }
 
 .sidebar-menu a.active .sidebar-menu-indicator {
@@ -144,6 +174,10 @@ body {
 }
 
 /* Style Sidebar Saat Collapsed */
+.sidebar.collapsed {
+  width: 88px; /* Tambahan - lebar collapsed fixed */
+}
+
 .sidebar.collapsed .sidebar-logo-text,
 .sidebar.collapsed .menu-text {
   opacity: 0;
@@ -151,6 +185,7 @@ body {
   overflow: hidden;
   pointer-events: none;
   transition: opacity 0.1s ease-out;
+  display: none; /* Tambahan */
 }
 
 .sidebar.collapsed .sidebar-logo {
@@ -164,8 +199,8 @@ body {
 
 .sidebar.collapsed .sidebar-menu a {
   justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+  padding: 14px 10px; /* Sesuaikan padding */
+  white-space: nowrap; /* Tambahan */
 }
 
 .sidebar.collapsed .sidebar-menu-icon {
@@ -1171,6 +1206,21 @@ body {
    MODAL TAMBAH SISWA
    ========================================= */
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px; /* Tambahan */
+  box-sizing: border-box; /* Tambahan */
+}
+
 .modal-content {
   background-color: white;
   padding: 30px;
@@ -1181,6 +1231,9 @@ body {
   animation: fadeIn 0.3s ease-out;
   display: flex;
   flex-direction: column;
+  max-height: 90vh; /* Tambahan - agar tidak keluar viewport */
+  overflow-y: auto; /* Tambahan - scroll jika konten panjang */
+  box-sizing: border-box; /* Tambahan */
 }
 
 .modal-content h3 {
@@ -1190,6 +1243,11 @@ body {
   padding-bottom: 15px;
   border-bottom: 1px solid #eee;
   font-size: 1.5rem;
+}
+
+.modal-form {
+  flex: 1; /* Tambahan */
+  overflow-y: auto; /* Tambahan */
 }
 
 .form-row-2-col {
@@ -1202,6 +1260,15 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Tambahan - untuk flex item */
+}
+
+.form-col label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+  display: block; /* Tambahan */
 }
 
 @media (max-width: 768px) {
@@ -1215,7 +1282,7 @@ body {
 .modal-content select,
 .modal-content textarea {
   width: 100%;
-  padding: 12px;
+  padding: 12px 14px; /* Sesuaikan padding */
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
@@ -1224,35 +1291,54 @@ body {
   background-color: white;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s; /* Tambahan box-shadow */
+  line-height: 1.5; /* Tambahan */
+}
+
+.modal-content input::placeholder,
+.modal-content textarea::placeholder {
+  color: #999; /* Tambahan - warna placeholder lebih jelas */
+  opacity: 1; /* Tambahan */
+  font-size: 14px; /* Tambahan */
 }
 
 .modal-content input:focus,
 .modal-content select:focus,
 .modal-content textarea:focus {
   border-color: #4a148c;
-  box-shadow: 0 0 0 2px rgba(74, 20, 140, 0.1);
-}
-
-.modal-content label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 8px;
+  box-shadow: 0 0 0 3px rgba(74, 20, 140, 0.1);
+  background-color: #fff; /* Tambahan */
 }
 
 .modal-content select {
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23333' stroke-width='2' viewBox='0 0 24 24'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 1em;
+  background-position: right 12px center; /* Sesuaikan posisi */
+  background-size: 16px; /* Sesuaikan ukuran */
   cursor: pointer;
+  padding-right: 40px; /* Tambahan - ruang untuk arrow */
+}
+
+.modal-content select option {
+  padding: 10px; /* Tambahan */
+  color: #333; /* Tambahan */
 }
 
 .modal-content textarea {
   resize: vertical;
   min-height: 80px;
+  font-family: 'Poppins', sans-serif; /* Pastikan font sama */
+  line-height: 1.6; /* Tambahan - line height untuk textarea */
+}
+
+/* Autofill styling untuk modal */
+.modal-content input:-webkit-autofill,
+.modal-content input:-webkit-autofill:hover,
+.modal-content input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #333 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .modal-actions {
@@ -1262,10 +1348,11 @@ body {
   margin-top: 25px;
   padding-top: 20px;
   border-top: 1px solid #eee;
+  flex-shrink: 0; /* Tambahan - agar tidak menyusut */
 }
 
 .btn-cancel {
-  padding: 10px 20px;
+  padding: 12px 24px; /* Sesuaikan padding */
   border: 1px solid #ddd;
   background-color: white;
   color: #666;
@@ -1273,6 +1360,8 @@ body {
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
+  font-family: 'Poppins', sans-serif; /* Tambahan */
+  font-size: 14px; /* Tambahan */
 }
 
 .btn-cancel:hover {
@@ -1281,7 +1370,7 @@ body {
 }
 
 .btn-submit {
-  padding: 10px 20px;
+  padding: 12px 24px; /* Sesuaikan padding */
   border: none;
   background-color: #4a148c;
   color: white;
@@ -1289,17 +1378,28 @@ body {
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s;
+  font-family: 'Poppins', sans-serif; /* Tambahan */
+  font-size: 14px; /* Tambahan */
 }
 
 .btn-submit:hover {
   background-color: #38006b;
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 20, 140, 0.3); /* Tambahan */
+}
+
+.btn-submit:disabled,
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none; /* Tambahan */
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 
 /* =========================================
    LOGIN PAGE
@@ -1366,12 +1466,17 @@ body {
 .login-header p {
   color: #777;
   font-size: 14px;
-  margin: 0;
+  margin: 0 0 30px 0; /* Tambahan margin bottom */
+}
+
+.login-form {
+  text-align: left; /* Tambahan - align form ke kiri */
 }
 
 .input-group {
   position: relative;
-  margin-bottom: 25px;
+  margin-bottom: 20px; /* Sesuaikan dari 25px */
+  width: 100%; /* Tambahan */
 }
 
 .input-icon {
@@ -1382,6 +1487,7 @@ body {
   color: #aaa;
   font-size: 18px;
   z-index: 10;
+  pointer-events: none; /* Tambahan - agar tidak menghalangi input */
 }
 
 .input-group input {
@@ -1389,18 +1495,35 @@ body {
   padding: 15px 15px 15px 45px;
   border: 2px solid #f0f2f5;
   border-radius: 12px;
-  font-family: 'Poppins';
+  font-family: 'Poppins', sans-serif; /* Perbaiki typo */
   font-size: 15px;
   outline: none;
   transition: all 0.3s;
   background-color: #f9f9f9;
   color: #333 !important;
+  box-sizing: border-box; /* Tambahan - penting untuk width 100% */
+  line-height: 1.5; /* Tambahan - untuk vertical align text */
+}
+
+.input-group input::placeholder {
+  color: #aaa; /* Tambahan - warna placeholder */
+  opacity: 1; /* Tambahan - untuk konsistensi */
+  font-size: 14px; /* Tambahan - ukuran placeholder */
 }
 
 .input-group input:focus {
   border-color: #4a148c;
   background-color: white;
   box-shadow: 0 0 0 4px rgba(74,20,140,0.1);
+}
+
+/* Autofill styling untuk mencegah background kuning */
+.input-group input:-webkit-autofill,
+.input-group input:-webkit-autofill:hover,
+.input-group input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #f9f9f9 inset !important;
+  -webkit-text-fill-color: #333 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .btn-login {
@@ -1418,6 +1541,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-top: 10px;
+  box-sizing: border-box; /* Tambahan */
 }
 
 .btn-login:hover {
@@ -1428,6 +1552,7 @@ body {
 .btn-login:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none; /* Tambahan - no hover effect saat disabled */
 }
 
 .error-message {
@@ -1436,10 +1561,11 @@ body {
   padding: 12px;
   border-radius: 8px;
   font-size: 14px;
-  margin-bottom: 25px;
+  margin-bottom: 20px; /* Sesuaikan dari 25px */
   border-left: 5px solid #c62828;
   text-align: left;
   font-weight: 500;
+  box-sizing: border-box; /* Tambahan */
 }
 
 .login-footer {
@@ -1569,8 +1695,8 @@ body {
    RESPONSIVE LAYER — MOBILE, TABLET, DESKTOP
    ========================================================= */
 
-/* ============================
-   1) RESPONSIVE SIDEBAR & LAYOUT
+/*============================
+   RESPONSIVE SIDEBAR & LAYOUT
    ============================ */
 
 @media (max-width: 992px) {
@@ -1580,26 +1706,39 @@ body {
 
   .sidebar {
     padding: 20px 10px;
+    width: 90px;
   }
 
-  .main-content {
-    padding: 16px;
+  /* Otomatis hide text di tablet */
+  .sidebar .sidebar-logo-text,
+  .sidebar .menu-text {
+    display: none;
   }
 
-  .dashboard-header {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-
-  .header-controls {
+  .sidebar .sidebar-menu a {
     justify-content: center;
+    padding: 12px;
+    white-space: nowrap;
+  }
+
+  .sidebar .sidebar-menu-icon {
+    margin-right: 0;
+    font-size: 22px;
+  }
+
+  .sidebar .sidebar-menu-indicator {
+    display: none;
   }
 }
 
 @media (max-width: 600px) {
   .app-container {
     grid-template-columns: 70px 1fr !important;
+  }
+
+  .sidebar {
+    padding: 16px 8px;
+    width: 70px;
   }
 
   .sidebar-menu a {
@@ -1610,8 +1749,8 @@ body {
     font-size: 20px;
   }
 
-  .header-title {
-    font-size: 20px;
+  .sidebar-school-logo {
+    max-height: 50px;
   }
 }
 
@@ -1729,7 +1868,7 @@ body {
 }
 
 /* ============================
-   7) RESPONSIVE MODAL TAMBAH SISWA
+   RESPONSIVE MODAL TAMBAH SISWA
    ============================ */
 
 @media (max-width: 600px) {
@@ -1741,10 +1880,31 @@ body {
   .form-row-2-col {
     flex-direction: column;
   }
+
+  .modal-content input,
+  .modal-content select,
+  .modal-content textarea {
+    padding: 11px 13px; /* Sesuaikan untuk mobile */
+    font-size: 14px;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    padding: 11px 20px; /* Sesuaikan */
+    font-size: 13px; /* Tambahan */
+  }
+
+  .modal-actions {
+    flex-direction: column; /* Tambahan - stack buttons di mobile */
+  }
+
+  .modal-actions button {
+    width: 100%; /* Tambahan - full width di mobile */
+  }
 }
 
 /* ============================
-   8) RESPONSIVE LOGIN PAGE
+   RESPONSIVE LOGIN PAGE
    ============================ */
 
 @media (max-width: 600px) {
@@ -1757,8 +1917,26 @@ body {
     height: 70px;
   }
 
+  .login-logo {
+    width: 50px; /* Tambahan */
+  }
+
   .login-header h2 {
     font-size: 20px;
   }
-}
 
+  .input-group input {
+    padding: 14px 14px 14px 42px; /* Sesuaikan */
+    font-size: 14px; /* Tambahan */
+  }
+
+  .input-icon {
+    font-size: 16px; /* Tambahan */
+    left: 13px; /* Tambahan */
+  }
+
+  .btn-login {
+    padding: 14px; /* Tambahan */
+    font-size: 15px; /* Tambahan */
+  }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BalanceCard from '../components/BalanceCard';
 import TransactionSummary from '../components/TransactionSummary';
 import SavingsChart from '../components/SavingsChart';
+import { fetchWithAuth } from '../utils/api'; 
 
 const DashboardPage = () => {
   const [saldo, setSaldo] = useState(0);
@@ -14,27 +15,23 @@ const DashboardPage = () => {
   const semesterLabel = currentSemester === 'ganjil' ? 'SEMESTER GANJIL (JUL - DES)' : 'SEMESTER GENAP (JAN - JUN)';
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
-    
-    if (!token || !userString) return;
-
+    if (!userString) return;
     const user = JSON.parse(userString);
-    const userId = user.id; // TIDAK ADA FALLBACK LAGI
+    const userId = user.id;
 
-    const headers = { 'Authorization': `Bearer ${token}` };
-
-    fetch(`http://localhost:5000/api/siswa/${userId}`, { headers })
+    // Ganti fetch biasa dengan fetchWithAuth (Header Auth otomatis ditambahkan)
+    fetchWithAuth(`http://localhost:5000/api/siswa/${userId}`)
       .then(res => res.json())
       .then(data => setSaldo(data.saldo || 0))
-      .catch(err => console.error("Error saldo:", err));
+      .catch(err => console.error("Gagal ambil saldo:", err));
 
-    fetch(`http://localhost:5000/api/transaksi/${userId}`, { headers })
+    fetchWithAuth(`http://localhost:5000/api/transaksi/${userId}`)
       .then(res => res.json())
       .then(data => {
         if(Array.isArray(data)) setRawTransactions(data);
       })
-      .catch(err => console.error("Error transaksi:", err));
+      .catch(err => console.error("Gagal ambil transaksi:", err));
   }, []);
 
   useEffect(() => {
@@ -44,7 +41,6 @@ const DashboardPage = () => {
   }, [rawTransactions]);
 
   const processTransactionData = (transactions) => {
-    // ... (Logika matematika sama persis, tidak ada data dummy di sini) ...
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); 

@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { fetchWithAuth } from '../../utils/api'; 
 
 const AdminDashboard = () => {
   const [totalSiswa, setTotalSiswa] = useState(0);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    fetch('http://localhost:5000/api/admin/students', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    // Menggunakan fetchWithAuth
+    fetchWithAuth('http://localhost:5000/api/admin/students')
       .then(res => res.json())
       .then(data => {
          if(Array.isArray(data)) setTotalSiswa(data.length);

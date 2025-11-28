@@ -1,49 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { FaBell, FaChevronDown, FaUser, FaSignOutAlt } from 'react-icons/fa';
 import BoyProfile from '../assets/boy.png';
 import GirlProfile from '../assets/girl.png';
-import LogoSekolah from '../assets/logo-sdit-alhidayah.png'; // Default untuk admin
+import LogoSekolah from '../assets/logo-sdit-alhidayah.png'; 
+
+// Gunakan fetchWithAuth agar aman
+import { fetchWithAuth } from '../utils/api'; 
 
 const Header = () => {
   const [studentName, setStudentName] = useState('Pengguna'); 
+  // Default foto menggunakan Logo (aman untuk admin)
   const [userPhoto, setUserPhoto] = useState(LogoSekolah); 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const userString = localStorage.getItem('user');
     const role = localStorage.getItem('role');
-    const token = localStorage.getItem('token');
     
     if (userString) {
       const user = JSON.parse(userString);
       
-  
+      // 1. Set Nama Depan
       if (user.nama) {
         setStudentName(user.nama.split(' ')[0]);
       }
 
-      // Logika Foto Profil Berdasarkan Gender
+      // 2. Logika Foto Profil Berdasarkan Gender
       if (role === 'admin') {
         setUserPhoto(LogoSekolah);
-      } else if (role === 'siswa' && token) {
-        // Kita fetch data detail siswa untuk memastikan dapat jenis_kelamin terbaru
-        fetch(`http://localhost:5000/api/siswa/${user.id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.jenis_kelamin === 'P') {
-                setUserPhoto(GirlProfile);
-            } else {
-                setUserPhoto(BoyProfile); // Default Laki-laki
-            }
-        })
-        .catch(err => {
-            console.error("Gagal ambil detail siswa:", err);
-            setUserPhoto(BoyProfile); // Fallback jika error
-        });
+      } else if (role === 'siswa') {
+        // Cek apakah jenis_kelamin sudah ada di localStorage (dari login terbaru)
+        if (user.jenis_kelamin) {
+             setUserPhoto(user.jenis_kelamin === 'P' ? GirlProfile : BoyProfile);
+        } else {
+             // Jika tidak ada, fetch detail siswa
+             fetchWithAuth(`http://localhost:5000/api/siswa/${user.id}`)
+              .then(res => res.json())
+              .then(data => {
+                  setUserPhoto(data.jenis_kelamin === 'P' ? GirlProfile : BoyProfile);
+              })
+              .catch(err => {
+                  console.error("Gagal load foto header:", err);
+                  setUserPhoto(BoyProfile); // Fallback aman
+              });
+        }
       }
     }
   }, []);
@@ -71,7 +72,7 @@ const Header = () => {
         
         <div className="header-user-menu" onClick={toggleDropdown}>
           <div className="header-user-info clickable">
-            {/* Gunakan state userPhoto yang sudah otomatis berubah */}
+            {/* Gunakan state userPhoto */}
             <img 
               src={userPhoto} 
               alt="User Avatar" 

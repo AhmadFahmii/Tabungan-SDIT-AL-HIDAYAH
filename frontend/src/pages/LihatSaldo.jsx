@@ -1,38 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { FaArrowUp, FaArrowDown, FaBullseye } from 'react-icons/fa';
 import SavingsChart from '../components/SavingsChart'; 
+import { fetchWithAuth } from '../utils/api'; 
 
 const LihatSaldo = () => {
-  // Kita perlu state tambahan untuk menyimpan profil siswa (Nama & NIS)
-  const [studentInfo, setStudentInfo] = useState({ nama: 'Loading...', nis: '...' });
   const [saldo, setSaldo] = useState(0);
   const [stats, setStats] = useState({ incomeMonth: 0, expenseMonth: 0, percentage: 0 });
   const [chartData, setChartData] = useState([]);
+  const [studentInfo, setStudentInfo] = useState({ nama: 'Loading...', nis: '...' });
   
   const TARGET_TABUNGAN = 10000000; 
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
-    
-    if (!token || !userString) return;
-
+    if (!userString) return;
     const user = JSON.parse(userString);
     const userId = user.id;
 
-    const headers = { 'Authorization': `Bearer ${token}` };
-
-    // 1. Ambil Detail Siswa (Untuk Nama & NIS di Kartu ATM)
-    fetch(`http://localhost:5000/api/siswa/${userId}`, { headers })
+    // Fetch dengan Wrapper Auth
+    fetchWithAuth(`http://localhost:5000/api/siswa/${userId}`)
       .then(res => res.json())
       .then(data => {
         setSaldo(data.saldo || 0);
         setStudentInfo({ nama: data.nama, nis: data.nis });
       })
-      .catch(err => console.error("Gagal ambil siswa:", err));
+      .catch(err => console.error("Gagal ambil saldo:", err));
 
-    // 2. Ambil Transaksi
-    fetch(`http://localhost:5000/api/transaksi/${userId}`, { headers })
+    fetchWithAuth(`http://localhost:5000/api/transaksi/${userId}`)
       .then(res => res.json())
       .then(data => {
           if(Array.isArray(data)) processTransactionData(data);
@@ -98,7 +92,6 @@ const LihatSaldo = () => {
               <h2>Rp {saldo.toLocaleString('id-ID')}</h2>
             </div>
             <div className="atm-bottom">
-              {/* Ganti Nama & NIS Hardcoded dengan State */}
               <p>{studentInfo.nama}</p>
               <p>{studentInfo.nis}</p>
             </div>

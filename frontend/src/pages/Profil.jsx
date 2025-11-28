@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import BoyImg from '../assets/boy.png';
-import GirlImg from '../assets/girl.png';
+import BoyProfile from '../assets/boy.png'; 
+import GirlProfile from '../assets/girl.png';
+import { fetchWithAuth } from '../utils/api'; 
 
 const Profil = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -8,77 +9,65 @@ const Profil = () => {
   const [studentData, setStudentData] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
+    if (!userString) return;
     
-    if (!token || !userString) return;
-
     const user = JSON.parse(userString);
-    const userId = user.id;
+    const userId = user.id; 
 
-    fetch(`http://localhost:5000/api/siswa/${userId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(response => response.json())
+    // Fetch Data Profil Siswa
+    fetchWithAuth(`http://localhost:5000/api/siswa/${userId}`)
+      .then(res => res.json())
       .then(data => {
-        // Tentukan foto berdasarkan jenis kelamin
-        const profilePhoto = data.jenis_kelamin === 'L' ? BoyImg : GirlImg;
-        
+        // Logika Pemilihan Foto Profil Berdasarkan Jenis Kelamin
+        let photo = BoyProfile; // Default Laki-laki
+        if (data.jenis_kelamin === 'P') {
+            photo = GirlProfile;
+        }
+
         setStudentData({
           name: data.nama,
           nis: data.nis,
           class: data.kelas,
-          gender: data.jenis_kelamin,
-          email: data.email || 'siswa@sdit-alhidayah.sch.id', 
-          phone: data.no_hp || '-',
-          address: data.alamat || '-',
-          joinDate: data.tanggal_masuk || '-',
-          photoUrl: profilePhoto // Foto dinamis berdasarkan gender
+          email: 'siswa@sdit-alhidayah.sch.id', 
+          phone: data.no_hp,
+          address: data.alamat,
+          joinDate: '20 April 2024',
+          photoUrl: photo // Gunakan foto yang sudah dipilih sesuai gender
         });
       })
-      .catch(error => console.error("Gagal mengambil data:", error));
+      .catch(error => console.error("Gagal mengambil data profil:", error));
   }, []);
 
   const handleOpenModal = () => setIsModalOpen(true);
-  
-  const handleCloseModal = () => { 
-    setIsModalOpen(false); 
-    setRequestNote(''); 
-  };
+  const handleCloseModal = () => { setIsModalOpen(false); setRequestNote(''); };
   
   const handleSubmitRequest = (e) => {
     e.preventDefault();
-    if (!requestNote.trim()) {
-      alert('Mohon isi keterangan perubahan data!');
-      return;
-    }
-    // TODO: Kirim request ke backend untuk approval admin
-    alert(`Permintaan perubahan data telah dikirim ke admin!\n\nKeterangan: ${requestNote}`);
+    alert(`Permintaan dikirim: ${requestNote}`);
     handleCloseModal();
   };
 
-  if (!studentData) {
-    return (
-      <div style={{padding: '40px', textAlign: 'center'}}>
-        <p>Sedang memuat data profil...</p>
-      </div>
-    );
-  }
+  if (!studentData) return <div style={{padding: '20px', textAlign: 'center'}}>Sedang memuat data profil...</div>;
 
   return (
     <div className="profile-container">
+      
+      {/* Kartu Foto Profil */}
       <div className="dashboard-card profile-header-card">
         <div className="profile-avatar-wrapper">
-          <img src={studentData.photoUrl} alt="Foto Profil" className="profile-avatar" />
+          <img 
+            src={studentData.photoUrl} 
+            alt="Foto Profil" 
+            className="profile-avatar" 
+          />
           <span className="profile-status-badge">Siswa Aktif</span>
         </div>
         <h2 className="profile-name">{studentData.name}</h2>
         <p className="profile-class">Kelas {studentData.class}</p>
-        <p style={{color: '#999', fontSize: '14px', marginTop: '5px'}}>
-          {studentData.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
-        </p>
       </div>
 
+      {/* Kartu Detail Data */}
       <div className="dashboard-card profile-details-card">
         <h3>Informasi Pribadi</h3>
         <form className="profile-form">
@@ -91,23 +80,11 @@ const Profil = () => {
             <input type="text" value={studentData.name} readOnly />
           </div>
           <div className="form-group">
-            <label>Jenis Kelamin</label>
-            <input 
-              type="text" 
-              value={studentData.gender === 'L' ? 'Laki-laki' : 'Perempuan'} 
-              readOnly 
-            />
-          </div>
-          <div className="form-group">
-            <label>Kelas</label>
-            <input type="text" value={studentData.class} readOnly />
-          </div>
-          <div className="form-group">
             <label>Email</label>
             <input type="email" value={studentData.email} readOnly />
           </div>
           <div className="form-group">
-            <label>No. HP / WA Orang Tua</label>
+            <label>No. HP / WA</label>
             <input type="text" value={studentData.phone} readOnly />
           </div>
           <div className="form-group full-width">
@@ -115,45 +92,33 @@ const Profil = () => {
             <textarea value={studentData.address} readOnly rows="3"></textarea>
           </div>
         </form>
+        
         <div className="profile-actions">
-          <button className="btn-edit" onClick={handleOpenModal}>
-            Request Ubah Data
-          </button>
+            <button className="btn-edit" onClick={handleOpenModal}>Request Ubah Data</button>
         </div>
       </div>
 
+      {/* Modal Request Ubah Data */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>Ajukan Perubahan Data</h3>
-            <p style={{color: '#666', marginBottom: '20px', fontSize: '14px'}}>
-              Silakan jelaskan data mana yang perlu diubah dan nilai yang benar. Admin akan meninjau permintaan Anda.
-            </p>
+            <p>Silakan jelaskan data mana yang salah.</p>
             <textarea 
               className="modal-textarea" 
-              rows="5" 
+              rows="4" 
               value={requestNote} 
               onChange={(e) => setRequestNote(e.target.value)}
-              placeholder="Contoh: No. HP Orang Tua saya yang benar adalah 08123456789, bukan yang tertera di sistem sekarang."
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #e0e0e0',
-                fontFamily: 'Poppins',
-                fontSize: '14px',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-                outline: 'none'
-              }}
-            />
-            <div className="modal-actions" style={{marginTop: '20px'}}>
+              placeholder="Contoh: Alamat saya pindah ke Jl. Mawar No. 5..."
+            ></textarea>
+            <div className="modal-actions">
               <button className="btn-cancel" onClick={handleCloseModal}>Batal</button>
-              <button className="btn-submit" onClick={handleSubmitRequest}>Kirim Permintaan</button>
+              <button className="btn-submit" onClick={handleSubmitRequest}>Kirim</button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };
