@@ -1,5 +1,5 @@
 // Tentukan alamat Backend di sini (Satu tempat untuk semua)
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = "https://tabungansdital-hidayah-anbaaua8hwf5fnb6.indonesiacentral-01.azurewebsites.net";
 
 let isRefreshing = false;
 let failedQueue = [];
