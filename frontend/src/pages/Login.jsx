@@ -4,7 +4,7 @@ import { FaLock, FaUser } from 'react-icons/fa';
 import LogoSekolah from '../assets/logo-sdit-alhidayah.png';
 
 // Import BASE_URL dari env (karena Login pakai fetch biasa, bukan wrapper)
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const BASE_URL = 'https://tabungansdital-hidayah-anbaaua8hwf5fnb6.indonesiacentral-01.azurewebsites.net';
 
 const Login = () => {
   const navigate = useNavigate();

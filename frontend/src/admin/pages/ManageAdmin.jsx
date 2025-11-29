@@ -15,7 +15,7 @@ const ManageAdmin = () => {
 
   // 1. Fetch Data Admin
   const fetchAdmins = () => {
-    fetch('http://localhost:5000/api/admin/accounts', {
+    fetch('https://tabungansdital-hidayah-anbaaua8hwf5fnb6.indonesiacentral-01.azurewebsites.net/api/admin/accounts', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -37,7 +37,7 @@ const ManageAdmin = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch('http://localhost:5000/api/admin/accounts', {
+      const response = await fetch('https://tabungansdital-hidayah-anbaaua8hwf5fnb6.indonesiacentral-01.azurewebsites.net/api/admin/accounts', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ const ManageAdmin = () => {
     if(!window.confirm("Yakin ingin menghapus admin ini?")) return;
 
     try {
-        const response = await fetch(`http://localhost:5000/api/admin/accounts/${id}`, {
+        const response = await fetch(`https://tabungansdital-hidayah-anbaaua8hwf5fnb6.indonesiacentral-01.azurewebsites.net/api/admin/accounts/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });

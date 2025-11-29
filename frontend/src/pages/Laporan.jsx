@@ -22,7 +22,7 @@ const Laporan = () => {
 
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:5000/api/transaksi/${userId}`, {
+        const response = await fetch(getApiUrl(`/api/transaksi/${userId}`), {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
