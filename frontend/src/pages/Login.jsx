@@ -33,7 +33,7 @@ const Login = () => {
 
       if (result.success) {
         localStorage.setItem('token', result.token);
-        localStorage.setItem('refreshToken', result.refreshToken); // Simpan Refresh Token
+        localStorage.setItem('refreshToken', result.refreshToken);
         localStorage.setItem('user', JSON.stringify(result.user));
         localStorage.setItem('role', result.role);
         localStorage.setItem('isLoggedIn', 'true');

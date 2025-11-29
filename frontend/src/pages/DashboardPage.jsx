@@ -20,7 +20,6 @@ const DashboardPage = () => {
     const user = JSON.parse(userString);
     const userId = user.id;
 
-    // Cukup gunakan path relatif, api.js akan menambahkan http://localhost:5000
     fetchWithAuth(`/api/siswa/${userId}`)
       .then(res => res.json())
       .then(data => setSaldo(data.saldo || 0))
